@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="TerraHistoria — Interaktywna mapa historyczna Polski i Europy: szlaki handlowe, pola bitewne, zamki, znaleziska archeologiczne i warstwa LIDAR." />
+  <title>TerraHistoria — Mapa Historyczna i Terenowa</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <!-- Szybkie połączenie z CDN i kafelkami map -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://a.basemaps.cartocdn.com" crossorigin />
+  <link rel="preconnect" href="https://b.basemaps.cartocdn.com" crossorigin />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet & MarkerCluster (szybki jsDelivr CDN) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" crossorigin="" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.min.css" crossorigin="" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.min.css" crossorigin="" />
+
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Pełnoekranowa mapa -->
+  <div id="map" role="application" aria-label="Interaktywna mapa historyczna TerraHistoria"></div>
+
+  <!-- GÓRNY PASEK WYSZUKIWANIA + KATEGORIE (w stylu Google Maps) -->
+  <header class="top-overlay">
+    <div class="search-bar-wrap">
+      <div class="search-bar">
+        <button id="btn-open-list" class="icon-btn" title="Lista i sortowanie miejsc" aria-label="Otwórz listę i sortowanie miejsc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <input id="search-input" type="search" placeholder="Szukaj bitwy, szlaku, skarbu, miasta lub GPS..." autocomplete="off" />
+        <button id="btn-clear-search" class="icon-btn hidden" title="Wyczyść" aria-label="Wyczyść wyszukiwanie">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <button id="btn-settings" class="icon-btn brand-avatar" title="Ustawienia i Google Maps" aria-label="Otwórz ustawienia">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+      <!-- Wyniki wyszukiwania -->
+      <div id="search-results" class="search-results hidden"></div>
+    </div>
+
+    <!-- Poziomy pasek filtrów kategorii -->
+    <div id="category-chips" class="category-chips" role="toolbar" aria-label="Filtruj kategorie historyczne"></div>
+
+    <!-- Pasek skanowania archiwów na żywo -->
+    <div class="live-scan-row">
+      <button id="btn-scan-archives" class="live-scan-pill">
+        <span class="pulse-dot"></span>
+        <span id="scan-btn-text">Skanuj archiwa w tym rejonie (Wikidata + OSM)</span>
+      </button>
+      <button id="btn-install-pwa" class="install-pill hidden">
+        📲 Zainstaluj na Androidzie
+      </button>
+    </div>
+  </header>
+
+  <!-- PRAWY STOS PRZYCISKÓW MAPY (Warstwy, LIDAR, GPS, Dodaj punkt, Prawo) -->
+  <aside class="map-controls" aria-label="Narzędzia mapy">
+    <button id="btn-layers" class="fab-btn" title="Warstwy mapy i LIDAR" aria-label="Warstwy mapy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+    </button>
+    <button id="btn-quick-lidar" class="fab-btn fab-lidar" title="Szybki przełącznik LIDAR (Rzeźba terenu)" aria-label="Przełącz LIDAR">
+      <span>LIDAR</span>
+    </button>
+    <button id="btn-locate" class="fab-btn" title="Moja lokalizacja GPS" aria-label="Centruj na mojej lokalizacji GPS">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/><circle cx="12" cy="12" r="7" stroke-opacity="0.5"/></svg>
+    </button>
+    <button id="btn-add-pin" class="fab-btn" title="Dodaj własny punkt terenowy" aria-label="Dodaj własny punkt terenowy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="9" y1="9" x2="15" y2="9"/></svg>
+    </button>
+    <button id="btn-legal" class="fab-btn fab-legal" title="Przepisy prawne i pozwolenia WKZ" aria-label="Przepisy prawne i WKZ">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </button>
+    <div class="zoom-stack">
+      <button id="btn-zoom-in" class="fab-btn fab-sm" title="Przybliż" aria-label="Przybliż">+</button>
+      <button id="btn-zoom-out" class="fab-btn fab-sm" title="Oddal" aria-label="Oddal">−</button>
+    </div>
+  </aside>
+
+  <!-- BANER TRYBU DODAWANIA PUNKTU -->
+  <div id="pick-banner" class="pick-banner hidden">
+    <span>📍 Dotknij wybranego miejsca na mapie, aby zapisać punkt terenowy</span>
+    <button id="btn-cancel-pick" class="btn-chip-sm">Anuluj</button>
+  </div>
+
+  <!-- DOLNA OŚ CZASU I FILTR EPOK (Zwijany panel chronologiczny) -->
+  <section id="timeline-dock" class="timeline-dock" aria-label="Oś czasu i filtrowanie epok">
+    <div class="timeline-header">
+      <div class="timeline-summary">
+        <span class="timeline-icon">⏳</span>
+        <div>
+          <div class="timeline-range-label" id="timeline-range-label">4000 p.n.e. – 1950 n.e.</div>
+          <div class="timeline-stats" id="timeline-stats">Ładowanie bazy historycznej...</div>
+        </div>
+      </div>
+      <div class="timeline-header-actions">
+        <button id="btn-open-list-bottom" class="btn-outline-sm">📋 Lista</button>
+        <button id="btn-toggle-timeline" class="btn-icon-round" title="Rozwiń/Zwiń oś czasu" aria-label="Rozwiń lub zwiń oś czasu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="timeline-body" class="timeline-body">
+      <div id="era-presets" class="era-presets"></div>
+      <div class="dual-slider-wrap">
+        <div class="slider-labels">
+          <span>Od: <strong id="label-year-min">4000 p.n.e.</strong></span>
+          <span>Do: <strong id="label-year-max">1950 n.e.</strong></span>
+        </div>
+        <div class="dual-range">
+          <div id="range-track-fill" class="range-track-fill"></div>
+          <input id="slider-min" type="range" min="-4000" max="1950" step="10" value="-4000" aria-label="Rok początkowy" />
+          <input id="slider-max" type="range" min="-4000" max="1950" step="10" value="1950" aria-label="Rok końcowy" />
+        </div>
+        <label class="checkbox-inline">
+          <input id="chk-include-undated" type="checkbox" checked />
+          <span>Uwzględniaj obiekty z archiwów bez dokładnej daty</span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <!-- WYSUWANY PANEL SZCZEGÓŁÓW OBIEKTU (w stylu Google Maps Bottom Sheet) -->
+  <article id="detail-sheet" class="detail-sheet hidden" aria-live="polite">
+    <div class="sheet-handle-bar" id="detail-handle">
+      <div class="sheet-handle"></div>
+    </div>
+    <button id="btn-close-detail" class="sheet-close-btn" title="Zamknij szczegóły" aria-label="Zamknij szczegóły">✕</button>
+    <div id="detail-content" class="detail-content"></div>
+  </article>
+
+  <!-- PANEL LISTY I SORTOWANIA MIEJSC -->
+  <div id="list-drawer" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Przegląd i sortowanie miejsc">
+    <div class="drawer-panel">
+      <div class="modal-header">
+        <div>
+          <h2>Przegląd miejsc historycznych</h2>
+          <p class="modal-subtitle" id="list-count-subtitle">Sortuj według okresu, odległości lub liczby znalezisk</p>
+        </div>
+        <button class="modal-close" data-close="list-drawer">✕</button>
+      </div>
+      <div class="sort-bar">
+        <label for="sort-select">Sortuj:</label>
+        <select id="sort-select">
+          <option value="oldest">Chronologicznie: od najstarszych</option>
+          <option value="newest">Chronologicznie: od najnowszych</option>
+          <option value="finds">Najwięcej udokumentowanych znalezisk</option>
+          <option value="distance">Najbliżej mojej lokalizacji (GPS)</option>
+          <option value="favorites">Ulubione i moje punkty</option>
+          <option value="name">Alfabetycznie (A–Z)</option>
+        </select>
+      </div>
+      <div id="places-list" class="places-list"></div>
+    </div>
+  </div>
+
+  <!-- MODAL WARSTW MAPY I LIDAR -->
+  <div id="layers-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Warstwy mapy i rzeźba terenu">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2>Podkład mapowy i rzeźba terenu</h2>
+          <p class="modal-subtitle">Wybierz mapę bazową i aktywuj warstwy topograficzne / LIDAR</p>
+        </div>
+        <button class="modal-close" data-close="layers-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <h3 class="section-title">Typ mapy bazowej</h3>
+        <div class="layer-grid" id="base-layer-grid">
+          <button class="layer-tile active" data-base="streets">
+            <span class="layer-emoji">🗺️</span>
+            <strong>Mapa drogowa</strong>
+            <small>Szybka (Carto / styl Google)</small>
+          </button>
+          <button class="layer-tile" data-base="osm">
+            <span class="layer-emoji">🧭</span>
+            <strong>OpenStreetMap</strong>
+            <small>Dokładne ścieżki i drogi leśne</small>
+          </button>
+          <button class="layer-tile" data-base="topo">
+            <span class="layer-emoji">⛰️</span>
+            <strong>Topograficzna 3D</strong>
+            <small>Poziomice i cieniowanie wzgórz</small>
+          </button>
+          <button class="layer-tile" data-base="satellite">
+            <span class="layer-emoji">🛰️</span>
+            <strong>Satelita HD</strong>
+            <small>Zdjęcia satelitarne Esri</small>
+          </button>
+          <button class="layer-tile" data-base="geoportal_orto">
+            <span class="layer-emoji">🇵🇱</span>
+            <strong>Ortofotomapa PL</strong>
+            <small>Geoportal GUGiK</small>
+          </button>
+          <button class="layer-tile" data-base="dark">
+            <span class="layer-emoji">🌙</span>
+            <strong>Mapa ciemna</strong>
+            <small>Oszczędna dla baterii AMOLED</small>
+          </button>
+          <button class="layer-tile google-tile hidden" data-base="google_terrain">
+            <span class="layer-emoji">🌐</span>
+            <strong>Google Teren</strong>
+            <small>Google Maps API</small>
+          </button>
+          <button class="layer-tile google-tile hidden" data-base="google_hybrid">
+            <span class="layer-emoji">🛰️</span>
+            <strong>Google Hybryda</strong>
+            <small>Google Maps API</small>
+          </button>
+        </div>
+
+        <h3 class="section-title">Nakładki kartograficzne i historyczne</h3>
+        <div class="toggle-list">
+          <label class="toggle-row highlight-row">
+            <div>
+              <strong>🏔️ Geoportal LIDAR (ISOK NMT — Polska)</strong>
+              <small>Cieniowanie rzeźby terenu: ujawnia kurhany, dawne trakty, okopy i wały pod lasem</small>
+            </div>
+            <input type="checkbox" id="toggle-lidar" />
+          </label>
+          <div id="lidar-opacity-wrap" class="slider-row hidden">
+            <label for="lidar-opacity">Przezroczystość LIDAR: <strong id="lidar-opacity-val">65%</strong></label>
+            <input type="range" id="lidar-opacity" min="20" max="100" value="65" />
+          </div>
+          <label class="toggle-row">
+            <div>
+              <strong>🛤️ Historyczne szlaki handlowe</strong>
+              <small>Szlak Bursztynowy, Via Regia, Solny, Hanzeatycki, Jagielloński i inne</small>
+            </div>
+            <input type="checkbox" id="toggle-routes" checked />
+          </label>
+          <label class="toggle-row">
+            <div>
+              <strong>🏷️ Etykiety dróg i miejscowości</strong>
+              <small>Przydatne po włączeniu widoku Satelita HD lub LIDAR</small>
+            </div>
+            <input type="checkbox" id="toggle-labels" />
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DODAWANIA WŁASNEGO PUNKTU TERENOWEGO -->
+  <div id="pin-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Dodaj punkt terenowy">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2>Nowy punkt w Dzienniku Terenowym</h2>
+          <p class="modal-subtitle">Zapisz własną obserwację, miejsce do weryfikacji lub status zgody</p>
+        </div>
+        <button class="modal-close" data-close="pin-modal">✕</button>
+      </div>
+      <form id="pin-form" class="modal-body form-stack">
+        <div class="form-row-2">
+          <div class="field">
+            <label for="pin-lat">Szerokość (Lat)</label>
+            <input id="pin-lat" type="number" step="0.00001" required />
+          </div>
+          <div class="field">
+            <label for="pin-lng">Długość (Lng)</label>
+            <input id="pin-lng" type="number" step="0.00001" required />
+          </div>
+        </div>
+        <div class="field">
+          <label for="pin-name">Nazwa miejsca</label>
+          <input id="pin-name" type="text" placeholder="np. Dawna karczma na skrzyżowaniu traktów" required />
+        </div>
+        <div class="form-row-2">
+          <div class="field">
+            <label for="pin-year">Szacowany rok / okres</label>
+            <input id="pin-year" type="number" min="-4000" max="2026" placeholder="np. 1750" />
+          </div>
+          <div class="field">
+            <label for="pin-permit">Status pozwolenia</label>
+            <select id="pin-permit">
+              <option value="Do weryfikacji w WKZ">Do weryfikacji w WKZ</option>
+              <option value="Zgoda właściciela + WKZ uzyskana">Zgoda właściciela + WKZ uzyskana</option>
+              <option value="Tylko obserwacja / zabytek chroniony">Tylko obserwacja (strefa chroniona)</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="pin-notes">Notatki terenowe / znaleziska</label>
+          <textarea id="pin-notes" rows="3" placeholder="Opis ukształtowania terenu, stare mapy Messtischblatt, notatki..."></textarea>
+        </div>
+        <div class="modal-footer-actions">
+          <button type="button" class="btn-secondary" data-close="pin-modal">Anuluj</button>
+          <button type="submit" class="btn-primary">💾 Zapisz punkt na mapie</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL PRAWNY (WKZ / NID) -->
+  <div id="legal-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Przewodnik prawny poszukiwacza">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2>⚖️ Przepisy prawne w Polsce (WKZ / NID)</h2>
+          <p class="modal-subtitle">Odpowiedzialna i legalna eksploracja historyczna</p>
+        </div>
+        <button class="modal-close" data-close="legal-modal">✕</button>
+      </div>
+      <div class="modal-body legal-content">
+        <div class="alert-box alert-danger">
+          <strong>⛔ Bezwzględny zakaz bez specjalnych badań archeologicznych:</strong>
+          <p>Stanowiska archeologiczne (AZP), grodziska, kurhany, zamki wpisane do rejestru zabytków, pomniki historii, cmentarze wojenne, parki narodowe i rezerwaty przyrody podlegają ścisłej ochronie. Punkty oznaczone na mapie czerwoną etykietą służą wyłącznie celom edukacyjnym, badawczym i turystycznym.</p>
+        </div>
+        <div class="alert-box alert-info">
+          <strong>✅ Jak legalnie poszukiwać w Polsce z wykrywaczem metali:</strong>
+          <ol>
+            <li>Uzyskaj <strong>pisemną zgodę właściciela lub zarządcy terenu</strong> (rolnik, gmina lub właściwe Nadleśnictwo Lasów Państwowych).</li>
+            <li>Sprawdź mapę zabytków i stanowisk archeologicznych na portalu <strong>zabytek.pl / NID</strong>, aby wykluczyć obszary chronione.</li>
+            <li>Złóż wniosek i uzyskaj <strong>pozwolenie Wojewódzkiego Konserwatora Zabytków (WKZ)</strong> (koszt opłaty skarbowej to obecnie 82 zł — pamiętaj o aktualnych przepisach i aplikacji mObywatel/e-Urząd).</li>
+            <li>Każde odkrycie zabytku archeologicznego lub przedmiotu o wartości historycznej należy niezwłocznie zgłosić do WKZ lub muzeum (przykład: legalne odkrycie skarbu w Cichobórzu czy badania na Polach Grunwaldu).</li>
+            <li><strong>Bezpieczeństwo:</strong> W rejonach walk I i II WŚ zachowaj szczególną ostrożność ze względu na niewybuchy i niewypały — nigdy ich nie dotykaj, powiadom Policję / patrol saperski.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL USTAWIEŃ (Google Maps API, Eksport GPX/GeoJSON, Cache) -->
+  <div id="settings-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Ustawienia TerraHistoria">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2>⚙️ Ustawienia i integracje</h2>
+          <p class="modal-subtitle">Google Maps API, eksport punktów GPX/GeoJSON i pamięć podręczna</p>
+        </div>
+        <button class="modal-close" data-close="settings-modal">✕</button>
+      </div>
+      <div class="modal-body form-stack">
+        <div class="settings-section">
+          <h3>🌐 Opcjonalny klucz Google Maps API</h3>
+          <p class="hint-text">Domyślne mapy (Satelita HD, Topograficzna, Geoportal LIDAR) są całkowicie darmowe. Jeśli chcesz dodatkowo korzystać z oryginalnych kafelków Google Maps (Teren i Hybryda), wklej poniżej swój klucz Google Maps JavaScript API (zapisywany wyłącznie lokalnie w Twoim telefonie).</p>
+          <div class="input-with-btn">
+            <input id="input-gmaps-key" type="password" placeholder="AIzaSy..." autocomplete="off" />
+            <button id="btn-save-gmaps" class="btn-primary">Aktywuj</button>
+          </div>
+          <div id="gmaps-status" class="status-msg"></div>
+        </div>
+
+        <div class="settings-section">
+          <h3>📤 Dziennik terenowy — Eksport danych</h3>
+          <p class="hint-text">Eksportuj zapisane własne punkty terenowe do pliku GPX (do nawigacji GPS / Locus / OsmAnd) lub GeoJSON.</p>
+          <div class="btn-row">
+            <button id="btn-export-gpx" class="btn-secondary">Eksportuj GPX</button>
+            <button id="btn-export-geojson" class="btn-secondary">Eksportuj GeoJSON</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>🗄️ Pamięć podręczna archiwów</h3>
+          <p class="hint-text">Pobrane dane z Wikidata i OpenStreetMap są buforowane przez 6 godzin, aby oszczędzać transfer w terenie.</p>
+          <button id="btn-clear-cache" class="btn-secondary">Wyczyść pamięć podręczną archiwów</button>
+        </div>
+
+        <div class="settings-section">
+          <h3>📱 Instalacja na Androidzie</h3>
+          <p class="hint-text">Otwórz aplikację w przeglądarce <strong>Chrome na Androidzie</strong> (przez HTTPS, np. z Netlify Drop lub GitHub Pages), kliknij menu <strong>⋮ → „Zainstaluj aplikację”</strong>. Projekt zawiera również gotową konfigurację <strong>Capacitor</strong> do wygenerowania pliku <code>.apk</code>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POWIADOMIENIE TOAST -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- Skrypty Leaflet i aplikacji (szybki jsDelivr CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.min.js" crossorigin=""></script>
+  <script type="module" src="js/ui/app.js"></script>
+</body>
+</html>
