@@ -1,0 +1,42 @@
+name: Build TerraHistoria Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pobierz kod projektu
+        uses: actions/checkout@v4
+      - name: Zainstaluj Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Zainstaluj Java 17 (Android Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Zainstaluj zależności Capacitor
+        run: npm install
+      - name: Utwórz i zsynchronizuj projekt Android
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Dodaj uprawnienia GPS do AndroidManifest.xml
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
+            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />|' "$MANIFEST"
+          fi
+      - name: Zbuduj plik instalacyjny APK (Debug)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - name: Udostępnij plik TerraHistoria.apk do pobrania
+        uses: actions/upload-artifact@v4
+        with:
+          name: TerraHistoria-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
